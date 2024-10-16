@@ -145,6 +145,9 @@ void new_game(void)
 void play_game(void)
 {
 	uint32_t last_flash_time = get_current_time();
+	
+	int play_time = 0;
+	char play_time_str[20];
 
 	// We play the game until it's over.
 	while (!is_game_over())
@@ -185,6 +188,15 @@ void play_game(void)
 
 			// Update the most recent icon flash time.
 			last_flash_time = current_time;
+		}
+		
+		//Increment timer if necessary
+		if (get_current_time() % 1000 == 0) {
+			move_terminal_cursor(22, 1);
+			sprintf(play_time_str, "%d", play_time);
+			printf("%s", play_time_str);
+			play_time++;
+			_delay_ms(10);
 		}
 	}
 	// We get here if the game is over.

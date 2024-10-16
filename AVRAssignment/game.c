@@ -217,7 +217,7 @@ void move_player(int8_t delta_row, int8_t delta_col)
 	uint8_t next_next_col = (next_col + delta_col) % 16;
 	
 	paint_square(player_row, player_col);
-	move_terminal_cursor(30,0);
+	move_terminal_cursor(20,0);
 	clear_to_end_of_line();
 	if (board[next_row][next_col] == WALL) {
 		display_terminal_message("wall");
@@ -257,7 +257,7 @@ void display_terminal_message(char type[]) {
 		int lb = 1;
 		int ub = 3;
 		rand_num = (rand() % (ub - lb + 1)) + lb;
-		move_terminal_cursor(30, 1);
+		move_terminal_cursor(20, 1);
 		if (rand_num == 1) {
 			printf_P(PSTR("Player hit a wall"));
 		} else if (rand_num == 2) {
@@ -266,10 +266,10 @@ void display_terminal_message(char type[]) {
 			printf_P(PSTR("There is a wall in the way"));
 		}
 	} else if (strcmp(type, "box_wall") == 0) {
-		move_terminal_cursor(30, 1);
+		move_terminal_cursor(20, 1);
 		printf_P(PSTR("Cannot push box onto wall"));
 	} else if (strcmp(type, "box_box") == 0) {
-		move_terminal_cursor(30, 1);
+		move_terminal_cursor(20, 1);
 		printf_P(PSTR("Cannot stack boxes"));
 	}
 	return;
