@@ -222,6 +222,11 @@ void move_player(int8_t delta_row, int8_t delta_col)
 	if (board[next_row][next_col] == WALL) {
 		display_terminal_message("wall");
 		return;
+	} else if (board[next_row][next_col] == (BOX | TARGET)) {
+		board[next_row][next_col] = TARGET;
+		paint_square(next_row, next_col);
+		board[next_next_row][next_next_col] = BOX;
+		paint_square(next_next_row, next_next_col);
 	} else if (board[next_row][next_col] == BOX) {
 		if (board[next_next_row][next_next_col] == WALL) {
 			display_terminal_message("box_wall");
@@ -231,8 +236,13 @@ void move_player(int8_t delta_row, int8_t delta_col)
 			return;
 		} else {
 			board[next_row][next_col] = ROOM;
-			board[next_next_row][next_next_col] = BOX;
-			paint_square(next_next_row, next_next_col);
+			if (board[next_next_row][next_next_col] == TARGET) {
+				board[next_next_row][next_next_col] = (TARGET | BOX);
+				paint_square(next_next_row, next_next_col);
+			} else {
+				board[next_next_row][next_next_col] = BOX;
+				paint_square(next_next_row, next_next_col);
+			}
 		}
 	}
 	player_row = next_row;
