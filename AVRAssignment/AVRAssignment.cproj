@@ -144,6 +144,12 @@
     <Compile Include="spi.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="ssd.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="ssd.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="startscrn.c">
       <SubType>compile</SubType>
     </Compile>

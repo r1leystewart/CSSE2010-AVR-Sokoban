@@ -39,6 +39,9 @@ void new_game(void);
 void play_game(void);
 void handle_game_over(void);
 
+//Global variable step counter
+uint8_t step_counter;
+
 /////////////////////////////// main //////////////////////////////////
 int main(void)
 {
@@ -140,10 +143,21 @@ void new_game(void)
 	// buffered inputs aren't going to make it to the new game.
 	clear_button_presses();
 	clear_serial_input_buffer();
+	
+	//Reset step counter
+	step_counter = 0;
 }
 
 void play_game(void)
 {
+	//Initialise step counter
+	uint8_t seven_seg[10] = {63,6,91,79,102,109,125,7,127,111};
+	step_counter = 0;
+	uint8_t value = 0;
+	uint8_t digit = 0; /* 0 = right, 1 = left */
+	DDRA = 0xFF;
+	DDRC = (1 << 0);
+	
 	uint32_t last_flash_time = get_current_time();
 	
 	int play_time = 0;
@@ -164,18 +178,16 @@ void play_game(void)
 		}
 
 		if (btn == BUTTON0_PUSHED || tolower(serial_input) == 'd') {
-			// Move the player, see move_player(...) in game.c.
-			// Also remember to reset the flash cycle here.
-			move_player(0, 1);
+			if (move_player(0, 1)) {step_counter++;}
 			last_flash_time = get_current_time();
 		} else if (btn == BUTTON1_PUSHED || tolower(serial_input) == 's') {
-			move_player(-1, 0);
+			if (move_player(-1, 0)) {step_counter++;}
 			last_flash_time = get_current_time();
 		} else if (btn == BUTTON2_PUSHED || tolower(serial_input) == 'w') {
-			move_player(1, 0);
+			if (move_player(1, 0)) {step_counter++;}
 			last_flash_time = get_current_time();
 		} else if (btn == BUTTON3_PUSHED || tolower(serial_input) == 'a') {
-			move_player(0, -1);
+			if (move_player(0, -1)) {step_counter++;}
 			last_flash_time = get_current_time();
 		}
 
@@ -190,6 +202,17 @@ void play_game(void)
 			last_flash_time = current_time;
 		}
 		
+		//Display step counter on seven segment display
+		if(digit == 0) {
+			value = step_counter % 10;
+			} else {
+			value = (step_counter / 10) % 10;
+		}
+		PORTA = seven_seg[value];
+		PORTC = digit;
+		/* Change the digit flag for next time. if 0 becomes 1, if 1 becomes 0. */
+		digit = 1 - digit;
+		
 		//Increment timer if necessary
 		if (get_current_time() % 1000 == 0) {
 			move_terminal_cursor(22, 1);
@@ -199,7 +222,11 @@ void play_game(void)
 			_delay_ms(10);
 		}
 	}
-	// We get here if the game is over.
+	handle_game_over();
+}
+
+void increment_step_counter(void) {
+	step_counter++;
 }
 
 void handle_game_over(void)

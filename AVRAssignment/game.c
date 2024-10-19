@@ -49,7 +49,7 @@ static bool player_visible;
 
 // This function paints a square based on the object(s) currently on it.
 static void paint_square(uint8_t row, uint8_t col)
-{
+{	
 	switch (board[row][col] & OBJECT_MASK)
 	{
 		case ROOM:
@@ -74,8 +74,8 @@ static void paint_square(uint8_t row, uint8_t col)
 
 // This function initialises the global variables used to store the game
 // state, and renders the initial game display.
-void initialise_game(void)
-{
+void initialise_game(void) {
+	
 	// Short definitions of game objects used temporarily for constructing
 	// an easier-to-visualise game layout.
 	#define _	(ROOM)
@@ -134,6 +134,9 @@ void initialise_game(void)
 			paint_square(row, col);
 		}
 	}
+	
+	//Draw the game board on the terminal
+	draw_terminal_board();
 }
 
 // This function flashes the player icon. If the icon is currently visible, it
@@ -157,7 +160,7 @@ void flash_player(void)
 }
 
 // This function handles player movements.
-void move_player(int8_t delta_row, int8_t delta_col)
+bool move_player(int8_t delta_row, int8_t delta_col)
 {
 	//                    Implementation Suggestions
 	//                    ==========================
@@ -211,44 +214,63 @@ void move_player(int8_t delta_row, int8_t delta_col)
 	// |    message area of the terminal and return a valid indicating a |
 	// |    valid move.                                                  |
 	// +-----------------------------------------------------------------+
-	uint8_t next_row = (player_row + delta_row) % 8;
-	uint8_t next_col = (player_col + delta_col) % 16;
-	uint8_t next_next_row = (next_row + delta_row) % 8;
-	uint8_t next_next_col = (next_col + delta_col) % 16;
 	
+	//Calculate next positions
+	int next_row = modulo((player_row+delta_row), 8);
+	int next_col = modulo((player_col+delta_col), 16);
+	int next_next_row = modulo((next_row+delta_row), 8);
+	int next_next_col = modulo((next_col+delta_col), 16);
+
 	paint_square(player_row, player_col);
 	move_terminal_cursor(20,0);
 	clear_to_end_of_line();
+	
+	//checks for wall in front of player
 	if (board[next_row][next_col] == WALL) {
 		display_terminal_message("wall");
-		return;
+		return false;
+		
+	//checks for filled target in front of player
 	} else if (board[next_row][next_col] == (BOX | TARGET)) {
+		if (board[next_next_row][next_next_col] == WALL) {
+			display_terminal_message("box_wall");
+			return false;
+		}
 		board[next_row][next_col] = TARGET;
 		paint_square(next_row, next_col);
+		update_terminal_display(next_row, MATRIX_NUM_ROWS-next_row, 1);
 		board[next_next_row][next_next_col] = BOX;
 		paint_square(next_next_row, next_next_col);
+		update_terminal_display(next_next_row, MATRIX_NUM_ROWS-next_next_row, 1);
+		
+	//checks for box in front of player
 	} else if (board[next_row][next_col] == BOX) {
 		if (board[next_next_row][next_next_col] == WALL) {
 			display_terminal_message("box_wall");
-			return;
+			return false;
 		} else if (board[next_next_row][next_next_col] == BOX) {
 			display_terminal_message("box_box");
-			return;
+			return false;
 		} else {
 			board[next_row][next_col] = ROOM;
 			if (board[next_next_row][next_next_col] == TARGET) {
 				board[next_next_row][next_next_col] = (TARGET | BOX);
 				paint_square(next_next_row, next_next_col);
+				update_terminal_display(next_next_row, MATRIX_NUM_ROWS-next_next_row, 1);
 			} else {
 				board[next_next_row][next_next_col] = BOX;
 				paint_square(next_next_row, next_next_col);
+				update_terminal_display(next_next_row, MATRIX_NUM_ROWS-next_next_row, 1);
 			}
 		}
 	}
+	
 	player_row = next_row;
 	player_col = next_col;
 	paint_square(player_row, player_col);
+	update_terminal_display(player_row, MATRIX_NUM_ROWS-player_row, 1);
 	flash_player();
+	return true;
 }
 
 void display_terminal_message(char type[]) {
@@ -279,6 +301,46 @@ void display_terminal_message(char type[]) {
 // returns true iff (if and only if) the game is over.
 bool is_game_over(void)
 {
-	// <YOUR CODE HERE>.
-	return false;
+	for (int row = 0; row < MATRIX_NUM_ROWS; row++) {
+		for (int col = 0; col < MATRIX_NUM_COLUMNS; col++) {
+			if (board[row][col] == TARGET) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+//Calculates the modulus of a number for player movement
+int modulo(int x,int y){
+	return (x % y + y) % y;
+}
+
+//Paints the current board on the terminal display
+void draw_terminal_board(void) {
+	int GAME_BOARD_ROW = 1;
+	int GAME_BOARD_COL = 1;
+	for (int row = MATRIX_NUM_ROWS-1; row >= 0; row--) {
+		update_terminal_display(row, GAME_BOARD_ROW, GAME_BOARD_COL);
+		printf("\n");
+		GAME_BOARD_ROW++;
+	}
+}
+
+void update_terminal_display(int board_row, int terminal_row, int terminal_col) {
+	move_terminal_cursor(terminal_row, terminal_col);
+	clear_to_end_of_line();
+	for (int column = 1; column <= MATRIX_NUM_COLUMNS-1; column++) {
+		if (board[board_row][column] == ROOM) {
+			printf("\033[100m   \033[0m");
+		} else if (board[board_row][column] == WALL) {
+			printf("\033[103m   \033[0m");
+		} else if (board[board_row][column] == BOX) {
+			printf("\033[43m   \033[0m");
+		} else if (board[board_row][column] == TARGET) {
+			printf("\033[41m   \033[0m");
+		} else if (board[board_row][column] == (BOX | TARGET)) {
+			printf("\033[102m   \033[0m");
+		}
+	}
 }

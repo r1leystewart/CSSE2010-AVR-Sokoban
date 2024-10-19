@@ -39,7 +39,8 @@ void initialise_game(void);
 /// </summary>
 /// <param name="delta_row">The row delta.</param>
 /// <param name="delta_col">The column delta.</param>
-void move_player(int8_t delta_row, int8_t delta_col);
+/// <returns>Whether the move was valid or not</returns>
+bool move_player(int8_t delta_row, int8_t delta_col);
 
 /// <summary>
 /// Displays a message in the message area of the terminal.
@@ -54,9 +55,22 @@ void display_terminal_message(char type[]);
 /// <returns>Whether the game is over.</returns>
 bool is_game_over(void);
 
+///<summary>
+///Calculates modulo for moving player across board
+///</summary>
+///<param name="x">First value in calculation</param>
+///<param name="y">Second value in calculation</param>
+///<returns>Modulo of x and y</returns>
+int modulo(int x,int y);
+
 /// <summary>
 /// Flashes the player icon.
 /// </summary>
 void flash_player(void);
 
+void draw_terminal_board(void);
+
+void update_terminal_display(int board_row, int terminal_row, int terminal_col);
+
 #endif /* GAME_H_ */
+
