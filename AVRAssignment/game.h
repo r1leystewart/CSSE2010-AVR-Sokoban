@@ -29,10 +29,12 @@
 #define COLOUR_TARGET	(COLOUR_RED)
 #define COLOUR_DONE  	(COLOUR_GREEN)
 
+void initialise_level(int level);
+
 /// <summary>
 /// Initialises the game.
 /// </summary>
-void initialise_game(void);
+void initialise_game(int level);
 
 /// <summary>
 /// Moves the player based on row and column deltas.

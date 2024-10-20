@@ -14,8 +14,6 @@ serialio.c
 
 spi.c
 
-ssd.c
-
 startscrn.c
 
 terminalio.c

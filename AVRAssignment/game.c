@@ -72,34 +72,58 @@ static void paint_square(uint8_t row, uint8_t col)
 	}
 }
 
-// This function initialises the global variables used to store the game
-// state, and renders the initial game display.
-void initialise_game(void) {
-	
+void initialise_level(int level) {
 	// Short definitions of game objects used temporarily for constructing
 	// an easier-to-visualise game layout.
 	#define _	(ROOM)
 	#define W	(WALL)
 	#define T	(TARGET)
 	#define B	(BOX)
-
-	// The starting layout of level 1. In this array, the top row is the
+	
+	// The starting layout of level x. In this array, the top row is the
 	// 0th row, and the bottom row is the 7th row. This makes it visually
 	// identical to how the pixels are oriented on the LED matrix, however
 	// the LED matrix treats row 0 as the bottom row and row 7 as the top
 	// row.
-	static const uint8_t lv1_layout[MATRIX_NUM_ROWS][MATRIX_NUM_COLUMNS] =
-	{
-		{ _, W, _, W, W, W, _, W, W, W, _, _, W, W, W, W },
-		{ _, W, T, W, _, _, W, T, _, B, _, _, _, _, T, W },
-		{ _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ },
-		{ W, _, B, _, _, _, _, W, _, _, B, _, _, B, _, W },
-		{ W, _, _, _, W, _, B, _, _, _, _, _, _, _, _, _ },
-		{ _, _, _, _, _, _, T, _, _, _, _, _, _, _, _, _ },
-		{ _, _, _, W, W, W, W, W, W, T, _, _, _, _, _, W },
-		{ W, W, _, _, _, _, _, _, W, W, _, _, W, W, W, W }
-	};
-
+	
+	uint8_t level_layout[MATRIX_NUM_ROWS][MATRIX_NUM_COLUMNS];
+	switch (level) {
+			case 1:
+			{
+			uint8_t temp_layout[MATRIX_NUM_ROWS][MATRIX_NUM_COLUMNS] = {
+				{ _, W, _, W, W, W, _, W, W, W, _, _, W, W, W, W },
+				{ _, W, T, W, _, _, W, T, _, B, _, _, _, _, T, W },
+				{ _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ },
+				{ W, _, B, _, _, _, _, W, _, _, B, _, _, B, _, W },
+				{ W, _, _, _, W, _, B, _, _, _, _, _, _, _, _, _ },
+				{ _, _, _, _, _, _, T, _, _, _, _, _, _, _, _, _ },
+				{ _, _, _, W, W, W, W, W, W, T, _, _, _, _, _, W },
+				{ W, W, _, _, _, _, _, _, W, W, _, _, W, W, W, W }
+			};
+			memcpy(level_layout, temp_layout, sizeof(level_layout));
+			player_row = 5;
+			player_col = 2;
+			}
+			break;
+		case 2:
+			{
+			uint8_t temp_layout[MATRIX_NUM_ROWS][MATRIX_NUM_COLUMNS] = {
+				{_, _, W, W, W, W, _, _, W, W, _, _, _, _, _, W },
+				{_, _, W, _, _, W, _, W, W, _, _, _, _, B, _, _ },
+				{_, _, W, _, B, W, W, W, _, _, T, W, _, T, W, W },
+				{_, _, W, _, _, _, _, T, _, _, B, W, W, W, _, _ },
+				{W, W, W, W, _, W, _, _, _, _, _, W, _, W, W, _ },
+				{W, T, B, _, _, _, _, B, _, _, _, W, W, _, W, W },
+				{W, _, _, _, T, _, _, _, _, _, _, B, T, _, _, _ },
+				{W, W, W, W, W, W, W, W, W, W, W, W, W, W, W, W }
+			};
+			memcpy(level_layout, temp_layout, sizeof(level_layout));
+			player_row = 6;
+			player_col = 15;
+			}
+			break;
+	}
+	
 	// Undefine the short game object names defined above, so that you
 	// cannot use use them in your own code. Use of single-letter names/
 	// constants is never a good idea.
@@ -107,24 +131,27 @@ void initialise_game(void) {
 	#undef W
 	#undef T
 	#undef B
-
-	// Set the initial player location (for level 1).
-	player_row = 5;
-	player_col = 2;
-
-	// Make the player icon initially invisible.
-	player_visible = false;
-
-	// Copy the starting layout (level 1 map) to the board array, and flip
+	
+	// Copy the starting layout (level map) to the board array, and flip
 	// all the rows.
 	for (uint8_t row = 0; row < MATRIX_NUM_ROWS; row++)
 	{
 		for (uint8_t col = 0; col < MATRIX_NUM_COLUMNS; col++)
 		{
 			board[MATRIX_NUM_ROWS - 1 - row][col] =
-				lv1_layout[row][col];
+			level_layout[row][col];
 		}
 	}
+}
+
+// This function initialises the global variables used to store the game
+// state, and renders the initial game display.
+void initialise_game(int level) {
+	
+	initialise_level(level);
+
+	// Make the player icon initially invisible.
+	player_visible = false;
 
 	// Draw the game board (map).
 	for (uint8_t row = 0; row < MATRIX_NUM_ROWS; row++)
@@ -264,7 +291,6 @@ bool move_player(int8_t delta_row, int8_t delta_col)
 			}
 		}
 	}
-	
 	player_row = next_row;
 	player_col = next_col;
 	paint_square(player_row, player_col);
@@ -308,6 +334,7 @@ bool is_game_over(void)
 			}
 		}
 	}
+	paint_square(player_row, player_col);
 	return true;
 }
 

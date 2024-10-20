@@ -35,12 +35,21 @@
 // given here.
 void initialise_hardware(void);
 void start_screen(void);
-void new_game(void);
+void new_game(int level);
 void play_game(void);
 void handle_game_over(void);
 
 //Global variable step counter
 uint8_t step_counter;
+
+//Global variable play time in seconds
+uint8_t play_time;
+
+//Global variable ssd numbers
+uint8_t seven_seg[10] = {63,6,91,79,102,109,125,7,127,111};
+	
+//Global variable level
+uint8_t current_level;
 
 /////////////////////////////// main //////////////////////////////////
 int main(void)
@@ -53,11 +62,14 @@ int main(void)
 
 	// Show the start screen. Returns when the player starts the game.
 	start_screen();
+	
+	//Set the level to 1
+	current_level = 1;
 
 	// Loop forever and continuously play the game.
 	while (1)
 	{
-		new_game();
+		new_game(current_level);
 		play_game();
 		handle_game_over();
 	}
@@ -130,14 +142,16 @@ void start_screen(void)
 	}
 }
 
-void new_game(void)
+void new_game(int level)
 {
 	// Clear the serial terminal.
 	hide_cursor();
 	clear_terminal();
 
 	// Initialise the game and display.
-	initialise_game();
+	initialise_game(level);
+	move_terminal_cursor(10, 1);
+	printf("Level: %d", current_level);
 
 	// Clear all button presses and serial inputs, so that potentially
 	// buffered inputs aren't going to make it to the new game.
@@ -151,7 +165,6 @@ void new_game(void)
 void play_game(void)
 {
 	//Initialise step counter
-	uint8_t seven_seg[10] = {63,6,91,79,102,109,125,7,127,111};
 	step_counter = 0;
 	uint8_t value = 0;
 	uint8_t digit = 0; /* 0 = right, 1 = left */
@@ -160,7 +173,7 @@ void play_game(void)
 	
 	uint32_t last_flash_time = get_current_time();
 	
-	int play_time = 0;
+	play_time = 0;
 	char play_time_str[20];
 
 	// We play the game until it's over.
@@ -175,6 +188,25 @@ void play_game(void)
 
 		if (serial_input_available()) {
 			serial_input = fgetc(stdin);
+		}
+		
+		if (tolower(serial_input) == 'p') {
+			while (1) {
+				if (serial_input_available()) {
+					if (tolower(fgetc(stdin)) == 'p') {
+						break;
+					}
+				}
+				//Keep ssd looping
+				if(digit == 0) {
+					value = step_counter % 10;
+					} else {
+					value = (step_counter / 10) % 10;
+				}
+				PORTA = seven_seg[value];
+				PORTC = digit;
+				digit = 1 - digit;
+			}
 		}
 
 		if (btn == BUTTON0_PUSHED || tolower(serial_input) == 'd') {
@@ -234,8 +266,24 @@ void handle_game_over(void)
 	move_terminal_cursor(14, 10);
 	printf_P(PSTR("GAME OVER"));
 	move_terminal_cursor(15, 10);
-	printf_P(PSTR("Press 'r'/'R' to restart, or 'e'/'E' to exit"));
+	printf_P(PSTR("Press 'r'/'R' to restart, 'e'/'E' to exit,"));
+	move_terminal_cursor(16, 10);
+	printf_P(PSTR("or press 'n'/'N' to progress to level 2"));
+	
+	//calculate and print score
+	int score = 0;
+	if (200-step_counter > 0) {
+		score += 200-step_counter;
+	}
+	if (1200-play_time > 0) {
+		score += 1200-play_time;
+	}
+	move_terminal_cursor(18, 10);
+	printf("Score: %d", score);
 
+	//For ssd
+	int digit = 0;
+	int value;
 	// Do nothing until a valid input is made.
 	while (1)
 	{
@@ -248,11 +296,27 @@ void handle_game_over(void)
 		}
 
 		// Check serial input.
-		if (toupper(serial_input) == 'R')
-		{
-			// <YOUR CODE HERE>
+		if (toupper(serial_input) == 'R') {
+			new_game(current_level);
+			play_game();
+		} else if (toupper(serial_input) == 'E') {
+			current_level = 1;
+			start_screen();
+			new_game(current_level);
+			play_game();
+		} else if (toupper(serial_input) == 'N') {
+			current_level = 2;
+			new_game(current_level);
+			play_game();
 		}
-		// Now check for other possible inputs.
 		
+		if(digit == 0) {
+			value = step_counter % 10;
+			} else {
+			value = (step_counter / 10) % 10;
+		}
+		PORTA = seven_seg[value];
+		PORTC = digit;
+		digit = 1- digit;
 	}
 }
