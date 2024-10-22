@@ -56,6 +56,10 @@ uint8_t current_level;
 //Global variable, turns sound effects on or off
 bool buzzer_enabled;
 
+//Global variable rest value of joystick
+uint8_t rest_value_x;
+uint8_t rest_value_y;
+
 /////////////////////////////// main //////////////////////////////////
 int main(void)
 {
@@ -96,6 +100,17 @@ void initialise_hardware(void)
 
 	// Turn on global interrupts.
 	sei();
+	
+	//Set rest values for joystick (not working)
+	ADMUX &= ~1;
+	ADCSRA |= (1<<ADSC);
+	while(ADCSRA & (1<<ADSC)) {;}
+	rest_value_x = ADC;
+	
+	ADMUX |= 1;
+	ADCSRA |= (1<<ADSC);
+	while(ADCSRA & (1<<ADSC)) {;}
+	rest_value_y = ADC;
 }
 
 void start_screen(void)
@@ -198,6 +213,9 @@ void play_game(void)
 	
 	play_time = 0;
 	char play_time_str[20];
+	
+	uint16_t sensitivity_diagonal = 200;
+	uint16_t sensitivity_regular = 400;
 
 	// We play the game until it's over.
 	while (!is_game_over())
@@ -255,8 +273,46 @@ void play_game(void)
 		}
 		value_y = ADC; // read the value
 		
+		move_terminal_cursor(0,1);
+		printf("%d", value_x);
 		
-		if ((btn == BUTTON0_PUSHED || tolower(serial_input) == 'd' || value_x > 700) && accept_input) {
+		if ((value_x < rest_value_x-sensitivity_diagonal && value_y > rest_value_y+sensitivity_diagonal) && accept_input) {
+			if (move_diagonal(0,-1,1,0)) {
+				step_counter += 2;
+				DDRD |= (1 << 6);
+				play_move_sound(buzzer_enabled);
+				last_input = get_current_time();
+				accept_input = false;
+			}
+			last_flash_time = get_current_time();
+		} else if ((value_x < rest_value_x-sensitivity_diagonal && value_y < rest_value_y-sensitivity_diagonal) && accept_input) {
+			if (move_diagonal(0,-1,-1,0)) {
+				step_counter += 2;
+				DDRD |= (1 << 6);
+				play_move_sound(buzzer_enabled);
+				last_input = get_current_time();
+				accept_input = false;
+			}
+			last_flash_time = get_current_time();
+		} else if ((value_x > rest_value_x+sensitivity_diagonal && value_y < rest_value_y-sensitivity_diagonal) && accept_input) {
+			if (move_diagonal(0,1,-1,0)) {
+				step_counter += 2;
+				DDRD |= (1 << 6);
+				play_move_sound(buzzer_enabled);
+				last_input = get_current_time();
+				accept_input = false;
+			}
+			last_flash_time = get_current_time();
+		} else if ((value_x > rest_value_x+sensitivity_diagonal && value_y > rest_value_y+sensitivity_diagonal) && accept_input) {
+			if (move_diagonal(0,1,1,0)) {
+				step_counter += 2;
+				DDRD |= (1 << 6);
+				play_move_sound(buzzer_enabled);
+				last_input = get_current_time();
+				accept_input = false;
+			}
+			last_flash_time = get_current_time();
+		} else if ((btn == BUTTON0_PUSHED || tolower(serial_input) == 'd' || value_x > rest_value_x+sensitivity_regular) && accept_input) {
 			if (move_player(0, 1)) {
 				step_counter++; 
 				DDRD |= (1 << 6); 
@@ -265,7 +321,7 @@ void play_game(void)
 				accept_input = false;
 			}
 			last_flash_time = get_current_time();
-		} else if ((btn == BUTTON1_PUSHED || tolower(serial_input) == 's' || value_y < 300) && accept_input) {
+		} else if ((btn == BUTTON1_PUSHED || tolower(serial_input) == 's' || value_y < rest_value_y-sensitivity_regular) && accept_input) {
 			if (move_player(-1, 0)) {
 				step_counter++; 
 				DDRD |= (1 << 6); 
@@ -274,7 +330,7 @@ void play_game(void)
 				accept_input = false;
 			}
 			last_flash_time = get_current_time();
-		} else if ((btn == BUTTON2_PUSHED || tolower(serial_input) == 'w' || value_y > 700) && accept_input) {
+		} else if ((btn == BUTTON2_PUSHED || tolower(serial_input) == 'w' || value_y > rest_value_y+sensitivity_regular) && accept_input) {
 			if (move_player(1, 0)) {
 				step_counter++; 
 				DDRD |= (1 << 6); 
@@ -283,7 +339,7 @@ void play_game(void)
 				accept_input = false;
 			}
 			last_flash_time = get_current_time();
-		} else if ((btn == BUTTON3_PUSHED || tolower(serial_input) == 'a' || value_x < 300) && accept_input) {
+		} else if ((btn == BUTTON3_PUSHED || tolower(serial_input) == 'a' || value_x < rest_value_x-sensitivity_regular) && accept_input) {
 			if (move_player(0, -1)) {
 				step_counter++; 
 				DDRD |= (1 << 6); 

@@ -44,6 +44,10 @@ void initialise_game(int level);
 /// <returns>Whether the move was valid or not</returns>
 bool move_player(int8_t delta_row, int8_t delta_col);
 
+bool move_diagonal(int8_t delta_row_1, int8_t delta_col_1, int8_t delta_row_2, int8_t delta_col_2);
+
+bool check_wall_or_box(int row, int col);
+
 /// <summary>
 /// Displays a message in the message area of the terminal.
 /// Contents of message depend on type parameter

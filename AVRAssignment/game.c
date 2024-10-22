@@ -316,6 +316,58 @@ bool move_player(int8_t delta_row, int8_t delta_col)
 	return true;
 }
 
+bool move_diagonal(int8_t delta_row_1, int8_t delta_col_1, int8_t delta_row_2, int8_t delta_col_2) {
+	int first_move_row;
+	int first_move_col;
+	int second_move_row;
+	int second_move_col;
+	first_move_row = modulo((player_row+delta_row_1), 8);  //try moving in the first direction first
+	first_move_col = modulo((player_col+delta_col_1), 16);
+	if (check_wall_or_box(first_move_row, first_move_col)) {  //try first move
+		second_move_row = modulo((first_move_row+delta_row_2), 8);
+		second_move_col = modulo((first_move_col+delta_col_2), 16);
+		if (check_wall_or_box(second_move_row, second_move_col)) {  //try second move
+			paint_square(player_row, player_col);  //second move successful
+			player_row = second_move_row;
+			player_col = second_move_col;
+			paint_square(player_row, player_col);
+			update_terminal_display(player_row, MATRIX_NUM_ROWS-player_row, 1);
+			flash_player();
+			return true;
+		}
+	} 
+	first_move_row = modulo((player_row+delta_row_2), 8);  //try moving in the second direction first
+	first_move_col = modulo((player_col+delta_col_2), 16);
+	if (check_wall_or_box(first_move_row, first_move_col)) {  //try first move
+		second_move_row = modulo((first_move_row+delta_row_1), 8);
+		second_move_col = modulo((first_move_col+delta_col_1), 16);
+		if (check_wall_or_box(second_move_row, second_move_col)) {  //try second move
+			paint_square(player_row, player_col);  //second move successful
+			player_row = second_move_row;
+			player_col = second_move_col;
+			paint_square(player_row, player_col);
+			update_terminal_display(player_row, MATRIX_NUM_ROWS-player_row, 1);
+			flash_player();
+			return true;
+		}
+	}
+	return false;  //both directions failed, move cannot be made
+}
+
+bool check_wall_or_box(int row, int col) {
+	if (board[row][col] == WALL) {
+		display_terminal_message("wall_diagonal");
+		return false;
+	} else if (board[row][col] == BOX) {
+		display_terminal_message("box_diagonal");
+		return false;
+	} else if (board[row][col] == (BOX | TARGET)) {
+		display_terminal_message("box_diagonal");
+		return false;
+	}
+	return true;
+}
+
 void display_terminal_message(char type[]) {
 	if (strcmp(type, "wall") == 0) {
 		int rand_num;
@@ -336,7 +388,13 @@ void display_terminal_message(char type[]) {
 	} else if (strcmp(type, "box_box") == 0) {
 		move_terminal_cursor(20, 1);
 		printf_P(PSTR("Cannot stack boxes"));
-	}
+	} else if (strcmp(type, "wall_diagonal") == 0) {
+		move_terminal_cursor(20, 1);
+		printf_P(PSTR("Diagonal move cannot be made"));
+	} else if (strcmp(type, "box_diagonal") == 0) {
+		move_terminal_cursor(20, 1);
+		printf_P(PSTR("Cannot move boxes diagonally"));
+}
 	return;
 }
 
