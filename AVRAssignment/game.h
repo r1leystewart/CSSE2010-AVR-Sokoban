@@ -70,6 +70,8 @@ int modulo(int x,int y);
 /// </summary>
 void flash_player(void);
 
+void flash_targets(void);
+
 void draw_terminal_board(void);
 
 void update_terminal_display(int board_row, int terminal_row, int terminal_col);

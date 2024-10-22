@@ -17,6 +17,7 @@
 #include <avr/pgmspace.h>
 #include "ledmatrix.h"
 #include "terminalio.h"
+#include "buzzer.h"
 
 
 // ========================== NOTE ABOUT MODULARITY ==========================
@@ -44,6 +45,7 @@ static uint8_t player_col;
 // A flag for keeping track of whether the player is currently visible.
 static bool player_visible;
 
+static bool targets_visible;
 
 // ========================== GAME LOGIC FUNCTIONS ===========================
 
@@ -183,6 +185,21 @@ void flash_player(void)
 	{
 		// The player is not visible, paint the underlying square.
 		paint_square(player_row, player_col);
+	}
+}
+
+void flash_targets(void) {
+	targets_visible = !targets_visible;
+	for (int row = 0; row < MATRIX_NUM_ROWS; row++) {
+		for (int col = 0; col < MATRIX_NUM_COLUMNS; col++) {
+			if (board[row][col] == TARGET) {
+				if (targets_visible) {
+					ledmatrix_update_pixel(row, col, COLOUR_TARGET);
+				} else {
+					ledmatrix_update_pixel(row, col, COLOUR_BLACK);
+				}
+			}
+		}
 	}
 }
 

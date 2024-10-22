@@ -25,7 +25,7 @@ project.d project.o: .././project.c \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\lib\gcc\avr\5.4.0\include\stdbool.h \
  .././startscrn.h .././ledmatrix.h .././pixel_colour.h .././buttons.h \
  .././serialio.h .././terminalio.h .././timer0.h .././timer1.h \
- .././timer2.h
+ .././timer2.h .././buzzer.h .././joystick.h
 
 c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\stdio.h:
 
@@ -92,3 +92,7 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\lib\
 .././timer1.h:
 
 .././timer2.h:
+
+.././buzzer.h:
+
+.././joystick.h:

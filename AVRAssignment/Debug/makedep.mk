@@ -4,7 +4,11 @@
 
 buttons.c
 
+buzzer.c
+
 game.c
+
+joystick.c
 
 ledmatrix.c
 

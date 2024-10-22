@@ -29,6 +29,8 @@
 #include "timer0.h"
 #include "timer1.h"
 #include "timer2.h"
+#include "buzzer.h"
+#include "joystick.h"
 
 
 // Function prototypes - these are defined below (after main()) in the order
@@ -51,6 +53,9 @@ uint8_t seven_seg[10] = {63,6,91,79,102,109,125,7,127,111};
 //Global variable level
 uint8_t current_level;
 
+//Global variable, turns sound effects on or off
+bool buzzer_enabled;
+
 /////////////////////////////// main //////////////////////////////////
 int main(void)
 {
@@ -65,6 +70,9 @@ int main(void)
 	
 	//Set the level to 1
 	current_level = 1;
+	
+	//Enable buzzer sounds
+	buzzer_enabled = true;
 
 	// Loop forever and continuously play the game.
 	while (1)
@@ -83,6 +91,8 @@ void initialise_hardware(void)
 	init_timer0();
 	init_timer1();
 	init_timer2();
+	init_buzzer();
+	init_joystick();
 
 	// Turn on global interrupts.
 	sei();
@@ -152,6 +162,10 @@ void new_game(int level)
 	initialise_game(level);
 	move_terminal_cursor(10, 1);
 	printf("Level: %d", current_level);
+	
+	//Play start sound
+	DDRD |= (1 << 6); 
+	play_start_sound(buzzer_enabled);
 
 	// Clear all button presses and serial inputs, so that potentially
 	// buffered inputs aren't going to make it to the new game.
@@ -164,14 +178,23 @@ void new_game(int level)
 
 void play_game(void)
 {
+	//Prepare variables for joystick
+	uint16_t value_x;
+	uint16_t value_y;
+	
 	//Initialise step counter
 	step_counter = 0;
 	uint8_t value = 0;
 	uint8_t digit = 0; /* 0 = right, 1 = left */
-	DDRA = 0xFF;
-	DDRC = (1 << 0);
+	DDRC = 0xFF;
+	DDRD = (1 << 5);
 	
 	uint32_t last_flash_time = get_current_time();
+	uint32_t last_target_flash_time = get_current_time();
+	uint32_t last_animation_flash = get_current_time();
+	uint32_t last_input = 0;
+	
+	bool accept_input = true;
 	
 	play_time = 0;
 	char play_time_str[20];
@@ -190,6 +213,10 @@ void play_game(void)
 			serial_input = fgetc(stdin);
 		}
 		
+		if (tolower(serial_input) == 'q') {
+			buzzer_enabled = 1 - buzzer_enabled;
+		}
+		
 		if (tolower(serial_input) == 'p') {
 			while (1) {
 				if (serial_input_available()) {
@@ -203,23 +230,67 @@ void play_game(void)
 					} else {
 					value = (step_counter / 10) % 10;
 				}
-				PORTA = seven_seg[value];
-				PORTC = digit;
+				PORTC = seven_seg[value];
+				PORTD = (digit << 5);
 				digit = 1 - digit;
 			}
 		}
-
-		if (btn == BUTTON0_PUSHED || tolower(serial_input) == 'd') {
-			if (move_player(0, 1)) {step_counter++;}
+		
+		//Detect values x and y from joystick
+		//value x:
+		ADMUX &= ~1;
+		// Start the ADC conversion
+		ADCSRA |= (1<<ADSC);
+		while(ADCSRA & (1<<ADSC)) {
+			; /* Wait until conversion finished */
+		}
+		value_x = ADC; // read the value
+		
+		//value y:
+		ADMUX |= 1;
+		// Start the ADC conversion
+		ADCSRA |= (1<<ADSC);
+		while(ADCSRA & (1<<ADSC)) {
+			; /* Wait until conversion finished */
+		}
+		value_y = ADC; // read the value
+		
+		
+		if ((btn == BUTTON0_PUSHED || tolower(serial_input) == 'd' || value_x > 700) && accept_input) {
+			if (move_player(0, 1)) {
+				step_counter++; 
+				DDRD |= (1 << 6); 
+				play_move_sound(buzzer_enabled);
+				last_input = get_current_time();
+				accept_input = false;
+			}
 			last_flash_time = get_current_time();
-		} else if (btn == BUTTON1_PUSHED || tolower(serial_input) == 's') {
-			if (move_player(-1, 0)) {step_counter++;}
+		} else if ((btn == BUTTON1_PUSHED || tolower(serial_input) == 's' || value_y < 300) && accept_input) {
+			if (move_player(-1, 0)) {
+				step_counter++; 
+				DDRD |= (1 << 6); 
+				play_move_sound(buzzer_enabled);
+				last_input = get_current_time();
+				accept_input = false;
+			}
 			last_flash_time = get_current_time();
-		} else if (btn == BUTTON2_PUSHED || tolower(serial_input) == 'w') {
-			if (move_player(1, 0)) {step_counter++;}
+		} else if ((btn == BUTTON2_PUSHED || tolower(serial_input) == 'w' || value_y > 700) && accept_input) {
+			if (move_player(1, 0)) {
+				step_counter++; 
+				DDRD |= (1 << 6); 
+				play_move_sound(buzzer_enabled);
+				last_input = get_current_time();
+				accept_input = false;
+			}
 			last_flash_time = get_current_time();
-		} else if (btn == BUTTON3_PUSHED || tolower(serial_input) == 'a') {
-			if (move_player(0, -1)) {step_counter++;}
+		} else if ((btn == BUTTON3_PUSHED || tolower(serial_input) == 'a' || value_x < 300) && accept_input) {
+			if (move_player(0, -1)) {
+				step_counter++; 
+				DDRD |= (1 << 6); 
+				play_move_sound(buzzer_enabled);
+				last_input = get_current_time();
+				accept_input = false;
+			}
 			last_flash_time = get_current_time();
 		}
 
@@ -233,6 +304,13 @@ void play_game(void)
 			// Update the most recent icon flash time.
 			last_flash_time = current_time;
 		}
+		if (current_time >= last_target_flash_time + 500) {
+			flash_targets();
+			last_target_flash_time = current_time;
+		}
+		if (current_time >= last_input + 100) {
+			accept_input = true;
+		}
 		
 		//Display step counter on seven segment display
 		if(digit == 0) {
@@ -240,8 +318,8 @@ void play_game(void)
 			} else {
 			value = (step_counter / 10) % 10;
 		}
-		PORTA = seven_seg[value];
-		PORTC = digit;
+		PORTC = seven_seg[value];
+		PORTD = (digit << 5);
 		/* Change the digit flag for next time. if 0 becomes 1, if 1 becomes 0. */
 		digit = 1 - digit;
 		
@@ -253,7 +331,11 @@ void play_game(void)
 			play_time++;
 			_delay_ms(10);
 		}
+		DDRD &= (11111101);
 	}
+	DDRD |= (1 << 6); 
+	play_victory_sound(buzzer_enabled);
+	DDRD &= (11111101);
 	handle_game_over();
 }
 
@@ -315,8 +397,8 @@ void handle_game_over(void)
 			} else {
 			value = (step_counter / 10) % 10;
 		}
-		PORTA = seven_seg[value];
-		PORTC = digit;
+		PORTC = seven_seg[value];
+		PORTD = (digit << 5);
 		digit = 1- digit;
 	}
 }
