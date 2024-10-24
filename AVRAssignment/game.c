@@ -47,11 +47,18 @@ static bool player_visible;
 
 static bool targets_visible;
 
+//List for keeping track of player moves
+int move_list[6][2] = {{-1,-1},{-1,-1},{-1,-1},{-1,-1},{-1,-1},{-1,-1}};
+int list_top = -1;
+
+int box_list[6][4] = {{-1,-1,-1,-1},{-1,-1,-1,-1},{-1,-1,-1,-1},{-1,-1,-1,-1},{-1,-1,-1,-1},{-1,-1,-1,-1}};
+int box_list_top = -1;
+
 // ========================== GAME LOGIC FUNCTIONS ===========================
 
 // This function paints a square based on the object(s) currently on it.
 static void paint_square(uint8_t row, uint8_t col)
-{	
+{
 	switch (board[row][col] & OBJECT_MASK)
 	{
 		case ROOM:
@@ -259,6 +266,8 @@ bool move_player(int8_t delta_row, int8_t delta_col)
 	// |    valid move.                                                  |
 	// +-----------------------------------------------------------------+
 	
+	bool box_moved = false;
+	
 	//Calculate next positions
 	int next_row = modulo((player_row+delta_row), 8);
 	int next_col = modulo((player_col+delta_col), 16);
@@ -286,6 +295,7 @@ bool move_player(int8_t delta_row, int8_t delta_col)
 		board[next_next_row][next_next_col] = BOX;
 		paint_square(next_next_row, next_next_col);
 		update_terminal_display(next_next_row, MATRIX_NUM_ROWS-next_next_row, 1);
+		box_moved = true;
 		
 	//checks for box in front of player
 	} else if (board[next_row][next_col] == BOX) {
@@ -296,6 +306,7 @@ bool move_player(int8_t delta_row, int8_t delta_col)
 			display_terminal_message("box_box");
 			return false;
 		} else {
+			box_moved = true;
 			board[next_row][next_col] = ROOM;
 			if (board[next_next_row][next_next_col] == TARGET) {
 				board[next_next_row][next_next_col] = (TARGET | BOX);
@@ -308,11 +319,19 @@ bool move_player(int8_t delta_row, int8_t delta_col)
 			}
 		}
 	}
+	
+	if (box_moved) {
+		add_previous_box_location(next_row, next_col, next_next_row, next_next_col);
+		box_moved = false;
+	} else {
+		add_previous_box_location(-1,-1,-1,-1);
+	}
+	
+	add_to_move_list(player_row, player_col);
 	player_row = next_row;
 	player_col = next_col;
 	paint_square(player_row, player_col);
-	update_terminal_display(player_row, MATRIX_NUM_ROWS-player_row, 1);
-	flash_player();
+	update_terminal_display(player_row, MATRIX_NUM_ROWS-player_row, 1);	
 	return true;
 }
 
@@ -328,6 +347,7 @@ bool move_diagonal(int8_t delta_row_1, int8_t delta_col_1, int8_t delta_row_2, i
 		second_move_col = modulo((first_move_col+delta_col_2), 16);
 		if (check_wall_or_box(second_move_row, second_move_col)) {  //try second move
 			paint_square(player_row, player_col);  //second move successful
+			add_to_move_list(player_row, player_col);
 			player_row = second_move_row;
 			player_col = second_move_col;
 			paint_square(player_row, player_col);
@@ -343,6 +363,7 @@ bool move_diagonal(int8_t delta_row_1, int8_t delta_col_1, int8_t delta_row_2, i
 		second_move_col = modulo((first_move_col+delta_col_1), 16);
 		if (check_wall_or_box(second_move_row, second_move_col)) {  //try second move
 			paint_square(player_row, player_col);  //second move successful
+			add_to_move_list(player_row, player_col);
 			player_row = second_move_row;
 			player_col = second_move_col;
 			paint_square(player_row, player_col);
@@ -352,6 +373,69 @@ bool move_diagonal(int8_t delta_row_1, int8_t delta_col_1, int8_t delta_row_2, i
 		}
 	}
 	return false;  //both directions failed, move cannot be made
+}
+
+bool undo_move(void) {
+	if (list_top < 0 || move_list[list_top][0] == -1 || move_list[list_top][1] == -1) {
+		return false;
+	}
+	if (list_top >= 0) {
+		paint_square(player_row, player_col);
+		player_row = move_list[list_top][0];
+		player_col = move_list[list_top][1];
+		list_top--;
+	}
+	
+	if (!(box_list_top < 0 || box_list[box_list_top][0] == -1 || box_list[box_list_top][1] == -1)) {
+		if (box_list_top >= 0) {
+			move_box();
+			box_list_top--;
+		}
+	}
+	return true;
+}
+
+void add_to_move_list(uint8_t row, uint8_t col) {
+	if (list_top < 5) {
+		list_top++;
+		move_list[list_top][0] = row;
+		move_list[list_top][1] = col;
+	} else {
+		for (int i = 0; i < 5; i++) {
+			move_list[i][0] = move_list[i+1][0];
+			move_list[i][1] = move_list[i+1][1];
+		}
+		move_list[5][0] = row;
+		move_list[5][1] = col;
+	}
+}
+
+void add_previous_box_location(uint8_t row, uint8_t col, uint8_t current_row, uint8_t current_col) {
+	if (box_list_top < 5) {
+		box_list_top++;
+		box_list[box_list_top][0] = row;
+		box_list[box_list_top][1] = col;
+		box_list[box_list_top][2] = current_row;
+		box_list[box_list_top][3] = current_row;
+	} else {
+		for (int i = 0; i < 5; i++) {
+			box_list[i][0] = box_list[i+1][0];
+			box_list[i][1] = box_list[i+1][1];
+			box_list[i][2] = box_list[i+1][2];
+			box_list[i][3] = box_list[i+1][3];
+		}
+		box_list[5][0] = row;
+		box_list[5][1] = col;
+		box_list[5][2] = current_row;
+		box_list[5][3] = current_col;
+	}
+}
+
+void move_box(void) {
+	board[box_list[box_list_top][0]][box_list[box_list_top][1]] = BOX;
+	board[box_list[box_list_top][2]][box_list[box_list_top][3]] = ROOM;
+	paint_square(box_list[box_list_top][0], box_list[box_list_top][1]);
+	paint_square(box_list[box_list_top][2], box_list[box_list_top][3]);
 }
 
 bool check_wall_or_box(int row, int col) {
@@ -365,7 +449,7 @@ bool check_wall_or_box(int row, int col) {
 		display_terminal_message("box_diagonal");
 		return false;
 	}
-	return true;
+	return true; 
 }
 
 void display_terminal_message(char type[]) {

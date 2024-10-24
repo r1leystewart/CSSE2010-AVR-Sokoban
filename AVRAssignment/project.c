@@ -56,10 +56,6 @@ uint8_t current_level;
 //Global variable, turns sound effects on or off
 bool buzzer_enabled;
 
-//Global variable rest value of joystick
-uint8_t rest_value_x;
-uint8_t rest_value_y;
-
 /////////////////////////////// main //////////////////////////////////
 int main(void)
 {
@@ -101,16 +97,6 @@ void initialise_hardware(void)
 	// Turn on global interrupts.
 	sei();
 	
-	//Set rest values for joystick (not working)
-	ADMUX &= ~1;
-	ADCSRA |= (1<<ADSC);
-	while(ADCSRA & (1<<ADSC)) {;}
-	rest_value_x = ADC;
-	
-	ADMUX |= 1;
-	ADCSRA |= (1<<ADSC);
-	while(ADCSRA & (1<<ADSC)) {;}
-	rest_value_y = ADC;
 }
 
 void start_screen(void)
@@ -216,6 +202,17 @@ void play_game(void)
 	
 	uint16_t sensitivity_diagonal = 200;
 	uint16_t sensitivity_regular = 400;
+	
+	//Set rest values for joystick (ensure joystick is at rest when starting game)
+	ADMUX &= ~1;
+	ADCSRA |= (1<<ADSC);
+	while(ADCSRA & (1<<ADSC)) {;}
+	uint16_t rest_value_x = ADC;
+	
+	ADMUX |= 1;
+	ADCSRA |= (1<<ADSC);
+	while(ADCSRA & (1<<ADSC)) {;}
+	uint16_t rest_value_y = ADC;
 
 	// We play the game until it's over.
 	while (!is_game_over())
@@ -229,6 +226,12 @@ void play_game(void)
 
 		if (serial_input_available()) {
 			serial_input = fgetc(stdin);
+		}
+		
+		if (tolower(serial_input) == 'z') {
+			if (undo_move()) {
+				step_counter--;
+			}
 		}
 		
 		if (tolower(serial_input) == 'q') {
@@ -272,9 +275,6 @@ void play_game(void)
 			; /* Wait until conversion finished */
 		}
 		value_y = ADC; // read the value
-		
-		move_terminal_cursor(0,1);
-		printf("%d", value_x);
 		
 		if ((value_x < rest_value_x-sensitivity_diagonal && value_y > rest_value_y+sensitivity_diagonal) && accept_input) {
 			if (move_diagonal(0,-1,1,0)) {
@@ -364,7 +364,7 @@ void play_game(void)
 			flash_targets();
 			last_target_flash_time = current_time;
 		}
-		if (current_time >= last_input + 100) {
+		if (current_time >= last_input + 200) {
 			accept_input = true;
 		}
 		

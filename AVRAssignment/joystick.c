@@ -15,7 +15,6 @@ void init_joystick(void) {
 	init_serial_stdio(19200,0);
 
 	// Set up ADC - AVCC reference, right adjust
-	// Input selection doesn't matter yet - we'll swap this around in the while
 	// loop below.
 	ADMUX = (1<<REFS0);
 	// Turn on the ADC (but don't start a conversion yet). Choose a clock

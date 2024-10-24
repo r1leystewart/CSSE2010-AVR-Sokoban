@@ -46,6 +46,14 @@ bool move_player(int8_t delta_row, int8_t delta_col);
 
 bool move_diagonal(int8_t delta_row_1, int8_t delta_col_1, int8_t delta_row_2, int8_t delta_col_2);
 
+bool undo_move(void);
+
+void add_to_move_list(uint8_t row, uint8_t col);
+
+void add_previous_box_location(uint8_t row, uint8_t col, uint8_t current_row, uint8_t current_col);
+
+void move_box(void);
+
 bool check_wall_or_box(int row, int col);
 
 /// <summary>
